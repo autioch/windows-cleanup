@@ -17,3 +17,7 @@ Set-ExecutionPolicy Bypass -Scope CurrentUser -Force
 - Optimize theme
 - Switch more performance settings in advanced settings
 - uninstalling Onedrive - should its process be disabled first?
+- handle pl installation
+
+- remove windows speech recognition, narrator, solitaire & casual games, paint3d, pogoda/weather, mixed reality portal, edytor video, aplikacja łączę z telefonem, szybka pomoc, rejestrator kroków/problemów, micrososft update health tools, microsoft edge webview 2, more privacy changes, autostart apps
+- windows store reset?
