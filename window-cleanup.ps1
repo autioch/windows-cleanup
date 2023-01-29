@@ -22,15 +22,27 @@ function appInstall($filename, $uri) {
 }
 
 function appRemove($package) { 
-    Remove-AppxPackage -Package $package -AllUsers -ErrorAction Continue | Out-Null
+    Write-Host "Uninstall user app ${package}"
+    try {
+        Remove-AppxPackage -Package $package -AllUsers -ErrorAction Continue | Out-Null
+    }
+    catch {
+        Write-Host "Failed to uninstall user app ${package}" $_.Exception.Message
+    }
 }
 
 function appRemoveProvisioned($packageName) { 
-    Remove-ProvisionedAppxPackage -PackageName $packageName -Online -AllUsers -ErrorAction Continue | Out-Null
+    Write-Host "Uninstall image app ${packageName}"
+    try {
+        Remove-ProvisionedAppxPackage -PackageName $packageName -Online -AllUsers -ErrorAction Continue | Out-Null
+    }
+    catch {
+        Write-Host "Failed to uninstall image app ${packageName}" $_.Exception.Message
+    }
 }
 
 function appRemoveRegex($regex) { 
-    Get-ProvisionedAppxPackage -Online | Where-Object { $_.PackageName -match $regex } | ForEach-Object { Remove-ProvisionedAppxPackage -PackageName $_.PackageName -Online -AllUsers -ErrorAction Continue | Out-Null }
+    Get-ProvisionedAppxPackage -Online | Where-Object { $_.PackageName -match $regex } | ForEach-Object { appRemoveProvisioned -PackageName $_.PackageName }
     Get-AppxPackage | Where-Object { $_.PackageName -match $regex } | ForEach-Object { appRemove -Package $_.PackageFullName }
 }
 
@@ -57,7 +69,7 @@ Checkpoint-Computer -Description "RestorePoint1" -RestorePointType "MODIFY_SETTI
 
 Write-Host "Uninstall Cortana"
 registrySet -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search' -Name AllowCortana -Value 0
-appRemove -package Microsoft.549981C3F5F10
+appRemoveRegex -regex Microsoft.549981C3F5F10
 
 Write-Host "Uninstall Spotify"
 appRemoveRegex -regex "spotify"
@@ -66,20 +78,18 @@ Write-Host "Uninstall microsoft apps"
 @(  "Microsoft.BingNews", "Microsoft.GetHelp", "Microsoft.Getstarted", "Microsoft.Microsoft3DViewer", "Microsoft.MicrosoftOfficeHub", "Microsoft.NetworkSpeedTest", "Microsoft.News", "Microsoft.Office.Lens", "Microsoft.Office.OneNote",
     "Microsoft.Office.Sway", "Microsoft.OneConnect", "Microsoft.People", "Microsoft.Print3D", "Microsoft.Office.Todo.List", "Microsoft.Whiteboard", "Microsoft.WindowsAlarms", "Microsoft.WindowsFeedbackHub", "Microsoft.WindowsMaps", 
     "Microsoft.BingWeather", "Microsoft.MicrosoftSolitaireCollection", "Microsoft.MixedReality.Portal", "Microsoft.Wallet", "Microsoft.YourPhone", "Microsoft.XboxGameCallableUI", "Microsoft.MicrosoftTreasureHunt",
-    "Microsoft.Windows.NarratorQuickStart", "Microsoft.WindowsSoundRecorder", "Microsoft.ZuneMusic", "Microsoft.ZuneVideo"
-) | ForEach-Object { appRemove -package $_ }
+    "Microsoft.Windows.NarratorQuickStart", "Microsoft.WindowsSoundRecorder", "Microsoft.ZuneMusic", "Microsoft.ZuneVideo", "Microsoft.3DBuilder"
+) | ForEach-Object { appRemoveRegex -regex $_ }
 
 Write-Host "Uninstall advertised apps"
 @( "EclipseManager", "ActiproSoftwareLLC", "AdobeSystemsIncorporated.AdobePhotoshopExpress", "Duolingo-LearnLanguagesforFree", "PandoraMediaInc", "CandyCrush", 
-    "BubbleWitch3Saga", "Wunderlist", "Flipboard", "Twitter", "Facebook", "Minecraft", "Royal Revolt", "Sway", "Dolby"
-) | ForEach-Object { appRemove -package $_ }
+   "BubbleWitch3Saga", "Wunderlist", "Flipboard", "Twitter", "Facebook", "Minecraft", "Royal Revolt", "Sway", "Dolby"
+) | ForEach-Object { appRemoveRegex -regex $_ }
 
 Write-Host "Uninstall Xbox"
 @( "XblAuthManager", "XblGameSave", "XboxGipSvc", "XboxNetApiSvc" ) | ForEach-Object { serviceDisable -Name $_ }
-appRemove -package "Microsoft.GamingServices"
+appRemoveRegex -regex "Microsoft.GamingServices"
 appRemoveRegex -regex "xbox"
-# This should be found by the regex
-# @( "Microsoft.GamingServices", "Microsoft.XboxApp", "Microsoft.Xbox.TCUI", "Microsoft.XboxGameCallableUI", "Microsoft.XboxGameOverlay", "Microsoft.XboxSpeechToTextOverlay", "Microsoft.XboxGamingOverlay", "Microsoft.XboxIdentityProvider", "Microsoft.Xbox.TCUI" ) | ForEach-Object { appRemove -package $_ }
 registrySet -Path "HKLM:\SYSTEM\CurrentControlSet\Services\xbgm" -Name "Start" -Value 4
 registrySet -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" -Name "AppCaptureEnabled"
 registrySet -Path "HKCU:\System\GameConfigStore" -Name "GameDVR_Enabled" 
@@ -91,12 +101,12 @@ registrySet -Path "HKLM:\SYSTEM\CurrentControlSet\Services\xbgm" -Name "Start" -
 registrySet -Path "HKLM:\SOFTWARE\Microsoft\WindowsRuntime\ActivatableClassId\Windows.Gaming.GameBar.PresenceServer.Internal.PresenceWriter" -Name "ActivationType"
 
 # TODO Doesn't work
-Write-Host "Uninstall what's possible from the pinned in Start Menu"
-(New-Object -Com Shell.Application).NameSpace('shell:::{4234d49b-0245-4df3-b780-3893943456e1}').Items() | ForEach-Object { $_.Verbs() } | Where-Object { $_.Name -match 'Uninstall' } | ForEach-Object { $_.DoIt() }
+# Write-Host "Uninstall what's possible from the pinned in Start Menu"
+# (New-Object -Com Shell.Application).NameSpace('shell:::{4234d49b-0245-4df3-b780-3893943456e1}').Items() | ForEach-Object { $_.Verbs() } | Where-Object { $_.Name -match 'Uninstall' } | ForEach-Object { $_.DoIt() }
 
 # TODO Doesn't work
-Write-Host "Unpin what's remaining from the pinnsed in Start Menu"
-(New-Object -Com Shell.Application).NameSpace('shell:::{4234d49b-0245-4df3-b780-3893943456e1}').Items() | ForEach-Object { $_.Verbs() } | Where-Object { $_.Name -match 'Un.*pin from Start' } | ForEach-Object { $_.DoIt() }
+# Write-Host "Unpin what's remaining from the pinnsed in Start Menu"
+# (New-Object -Com Shell.Application).NameSpace('shell:::{4234d49b-0245-4df3-b780-3893943456e1}').Items() | ForEach-Object { $_.Verbs() } | Where-Object { $_.Name -match 'Un.*pin from Start' } | ForEach-Object { $_.DoIt() }
 
 
 Write-Host "Disable Task View button"
@@ -127,7 +137,9 @@ Write-Host "Never join taskbar items"
 registrySet -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarGlomLevel" -Value 1
 
 Write-Host "Show all icons on the desktop"
-@("{20D04FE0-3AEA-1069-A2D8-08002B30309D}", "{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}", "{59031a47-3f72-44a7-89c5-5595fe6b30ee}", "{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}", "{645FF040-5081-101B-9F08-00AA002F954E}") | ForEach-Object { registrySet -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" -Name $_ }
+@(
+    "{20D04FE0-3AEA-1069-A2D8-08002B30309D}", "{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}", "{59031a47-3f72-44a7-89c5-5595fe6b30ee}", "{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}", "{645FF040-5081-101B-9F08-00AA002F954E}"
+) | ForEach-Object { registrySet -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" -Name $_ }
 
 Write-Host "Hide searchbar"
 registrySet -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" -Name "SearchBoxTaskbarMode"
@@ -188,10 +200,10 @@ Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DriverSearc
 Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DriverSearching" -Name "DriverUpdateWizardWuSearchEnabled" -ErrorAction SilentlyContinue
 Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name "ExcludeWUDriversInQualityUpdate" -ErrorAction SilentlyContinue
 
-Write-Host "Install browsers"
-appInstall -filename "chrome_installer.exe" -uri "http://dl.google.com/chrome/install/375.126/chrome_installer.exe"
-appInstall -filename "firefox.exe" -uri "https://download.mozilla.org/?product=firefox-msi-latest-ssl&os=win64&lang=en-US"
-appInstall -filename "brave_installer-x64.exe" -uri "https://brave-browser-downloads.s3.brave.com/latest/brave_installer-x64.exe"
+# Write-Host "Install browsers - ${$env:TEMP}"
+# appInstall -filename "chrome_installer.exe" -uri "http://dl.google.com/chrome/install/375.126/chrome_installer.exe"
+# appInstall -filename "firefox.exe" -uri "https://download.mozilla.org/?product=firefox-msi-latest-ssl&os=win64&lang=en-US"
+# appInstall -filename "brave_installer-x64.exe" -uri "https://brave-browser-downloads.s3.brave.com/latest/brave_installer-x64.exe"
 
 Write-Host "Uninstall OneDrive - takes time"
 If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\OneDrive")) { New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\OneDrive" | Out-Null }
@@ -213,11 +225,12 @@ itemRemove -Path "HKCR:\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}"
 itemRemove -Path "HKCR:\Wow6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" 
 
 Write-Host "Language - takes time"
-Install-Language pl-PL
+if ((Get-InstalledLanguage | ForEach-Object { $_.LanguageId }) -notcontains "pl-PL" ) { Install-Language pl-PL }
 Set-WinSystemLocale -SystemLocale pl-PL
+Set-SystemPreferredUILanguage pl-PL
 
 Write-Host "Cleanup temp folders"
-itemRemove -Path @( “C:\Windows\Temp\*”, “C:\Windows\Prefetch\*”, “C:\Documents and Settings\*\Local Settings\temp\*”, “C:\Users\*\Appdata\Local\Temp\*” )
+itemRemove -Path @( "C:\Windows\Temp\*", "C:\Windows\Prefetch\*", "C:\Documents and Settings\*\Local Settings\temp\*", "C:\Users\*\Appdata\Local\Temp\*" )
 
 Write-Host "Disk cleanup"
 cleanmgr /sagerun:1 /VeryLowDisk /AUTOCLEAN | Out-Null
