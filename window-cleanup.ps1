@@ -240,5 +240,8 @@ dism.exe /Online /Cleanup-Image /RestoreHealth
 dism.exe /Online /Cleanup-Image /StartComponentCleanup
 dism.exe /Online /Cleanup-Image /SPSuperseded
 
-read-host "Done. Press ENTER to restart Themes services and exit"
 Restart-Service Themes -Force
+stop-process -name explorer -force
+
+
+Write-Host "Done"
